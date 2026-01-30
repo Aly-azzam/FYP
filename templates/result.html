@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Results</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+
+  <a href="/">← New upload</a>
+
+  <div class="card">
+    <h2>Processed Media</h2>
+
+    {% if media_type == "video" %}
+      <video controls preload="metadata">
+        <source src="/outputs/{{ media_file }}" type="video/mp4">
+      </video>
+    {% else %}
+      <img src="/outputs/{{ media_file }}">
+    {% endif %}
+  </div>
+
+  {% if graph_data %}
+  <div class="card">
+    <h2>Index Fingertip Trajectory</h2>
+    <canvas id="chart"></canvas>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <h3>JSON Preview</h3>
+    <pre>{{ json_preview }}</pre>
+  </div>
+
+</div>
+
+{% if graph_data %}
+<script>
+  const graph = JSON.parse('{{ graph_data | safe }}');
+
+  const labels = [];
+  const values = [];
+
+  for (let i = 0; i < graph.t.length; i++) {
+    if (graph.y[i] !== null) {
+      labels.push(Math.round(graph.t[i]));
+      values.push(graph.y[i]);
+    }
+  }
+
+  new Chart(document.getElementById("chart"), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Index fingertip Y",
+        data: values,
+        borderWidth: 2,
+        tension: 0.3
+      }]
+    }
+  });
+</script>
+{% endif %}
+
+</body>
+</html>

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Upload Media</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="upload-card">
+  <h1>You can upload media</h1>
+  <p>Video or image (MP4 / JPG / PNG)</p>
+
+  <form action="/process" method="POST" enctype="multipart/form-data">
+    <input type="file" name="media" required>
+    <button type="submit">⬆ Upload</button>
+  </form>
+</div>
+
+</body>
+</html>
