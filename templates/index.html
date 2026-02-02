@@ -1,20 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Upload Media</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AugMentor 2.0 — AI Media Analyzer</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<div class="upload-card">
-  <h1>You can upload media</h1>
-  <p>Video or image (MP4 / JPG / PNG)</p>
-
-  <form action="/process" method="POST" enctype="multipart/form-data">
-    <input type="file" name="media" required>
-    <button type="submit">⬆ Upload</button>
-  </form>
+<div class="page-wrapper">
+  <div class="upload-card card">
+    
+    <!-- Brand Header -->
+    <div class="card-header">
+      <div class="brand">
+        <div class="brand-icon">👁</div>
+        <span class="brand-text">AugMentor 2.0</span>
+      </div>
+      <h1>Analyze Your Media</h1>
+      <p>Upload a video or image to detect faces and hand landmarks with AI-powered precision</p>
+    </div>
+    
+    <!-- Upload Form -->
+    <form action="/process" method="POST" enctype="multipart/form-data" id="uploadForm">
+      
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" name="media" id="mediaInput" accept="video/*,image/*" required>
+        
+        <div class="upload-icon">
+          <span id="uploadIconEmoji">📁</span>
+        </div>
+        
+        <span class="upload-label" id="uploadLabel">Drop your file here or click to browse</span>
+        <span class="upload-hint">
+          Supports <span>MP4</span>, <span>MOV</span>, <span>AVI</span>, <span>JPG</span>, <span>PNG</span>
+        </span>
+        
+        <div class="file-name" id="fileName"></div>
+      </div>
+      
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+        <span class="btn-icon">✨</span>
+        <span>Analyze Media</span>
+      </button>
+      
+    </form>
+    
+    
+  </div>
+  
+  <footer class="footer">
+    <p>Powered by MediaPipe & OpenCV</p>
+  </footer>
 </div>
+
+<script src="/static/app.js"></script>
 
 </body>
 </html>

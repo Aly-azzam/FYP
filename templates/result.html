@@ -1,66 +1,233 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Results</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Results — AugMentor 2.0</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
 <div class="container">
-
-  <a href="/">← New upload</a>
-
-  <div class="card">
-    <h2>Processed Media</h2>
-
-    {% if media_type == "video" %}
-      <video controls preload="metadata">
-        <source src="/outputs/{{ media_file }}" type="video/mp4">
-      </video>
-    {% else %}
-      <img src="/outputs/{{ media_file }}">
-    {% endif %}
+  
+  <!-- Back Link -->
+  <a href="/" class="back-link">
+    <span>←</span>
+    <span>New Analysis</span>
+  </a>
+  
+  <!-- Results Header -->
+  <div class="results-header">
+    <div class="brand" style="justify-content: center;">
+      <div class="brand-icon">👁</div>
+      <span class="brand-text">AugMentor 2.0</span>
+    </div>
+    <h1>Analysis Complete</h1>
+    <span class="badge badge-success">✓ Processed Successfully</span>
   </div>
-
+  
+  <!-- Processed Media Card -->
+  <div class="card result-card">
+    <h2>Processed Media</h2>
+    <div class="media-container">
+      {% if media_type == "video" %}
+        <video controls preload="metadata" playsinline>
+          <source src="/outputs/{{ media_file }}" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+      {% else %}
+        <img src="/outputs/{{ media_file }}" alt="Processed image with detected landmarks">
+      {% endif %}
+    </div>
+  </div>
+  
+  <!-- Trajectory Chart (Video Only) -->
   {% if graph_data %}
-  <div class="card">
-    <h2>Index Fingertip Trajectory</h2>
-    <canvas id="chart"></canvas>
+  <div class="card result-card">
+    <h2>Motion Trajectory</h2>
+    <div class="chart-container">
+      <canvas id="chart"></canvas>
+    </div>
   </div>
   {% endif %}
-
-  <div class="card">
-    <h3>JSON Preview</h3>
+  
+  <!-- JSON Data Preview -->
+  <div class="card result-card">
+    <h3>Detection Data</h3>
     <pre>{{ json_preview }}</pre>
   </div>
-
+  
+  <!-- Footer -->
+  <footer class="footer">
+    <p>Powered by MediaPipe & OpenCV</p>
+  </footer>
+  
 </div>
 
 {% if graph_data %}
 <script>
+  // Parse graph data
   const graph = JSON.parse('{{ graph_data | safe }}');
-
-  const labels = [];
-  const values = [];
-
-  for (let i = 0; i < graph.t.length; i++) {
-    if (graph.y[i] !== null) {
-      labels.push(Math.round(graph.t[i]));
-      values.push(graph.y[i]);
-    }
+  
+  // Build labels (time in ms)
+  const labels = graph.t.map(t => Math.round(t));
+  
+  // Hand trajectory data (index fingertip)
+  const handData = graph.hand_y || graph.y || [];
+  
+  // Pose trajectory data (nose/head position)
+  const poseData = graph.pose_y || [];
+  
+  // Chart.js configuration with custom styling
+  Chart.defaults.color = '#a1a1aa';
+  Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.08)';
+  Chart.defaults.font.family = "'DM Sans', sans-serif";
+  
+  // Build datasets
+  const datasets = [];
+  
+  // Hand trajectory (green)
+  if (handData.some(v => v !== null)) {
+    datasets.push({
+      label: "Hand (Index Fingertip)",
+      data: handData,
+      borderColor: '#10b981',
+      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+      borderWidth: 2,
+      tension: 0.4,
+      fill: false,
+      pointRadius: 0,
+      pointHoverRadius: 6,
+      pointHoverBackgroundColor: '#10b981',
+      pointHoverBorderColor: '#fff',
+      pointHoverBorderWidth: 2,
+      spanGaps: true
+    });
   }
-
+  
+  // Pose trajectory (coral/orange)
+  if (poseData.some(v => v !== null)) {
+    datasets.push({
+      label: "Body (Head Position)",
+      data: poseData,
+      borderColor: '#ff6b6b',
+      backgroundColor: 'rgba(255, 107, 107, 0.1)',
+      borderWidth: 2,
+      tension: 0.4,
+      fill: false,
+      pointRadius: 0,
+      pointHoverRadius: 6,
+      pointHoverBackgroundColor: '#ff6b6b',
+      pointHoverBorderColor: '#fff',
+      pointHoverBorderWidth: 2,
+      spanGaps: true
+    });
+  }
+  
   new Chart(document.getElementById("chart"), {
     type: "line",
     data: {
       labels: labels,
-      datasets: [{
-        label: "Index fingertip Y",
-        data: values,
-        borderWidth: 2,
-        tension: 0.3
-      }]
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            boxWidth: 12,
+            boxHeight: 12,
+            borderRadius: 3,
+            useBorderRadius: true,
+            padding: 20,
+            font: {
+              size: 13,
+              weight: 500
+            }
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(10, 10, 15, 0.9)',
+          titleColor: '#f4f4f5',
+          bodyColor: '#a1a1aa',
+          borderColor: 'rgba(255, 107, 107, 0.3)',
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 8,
+          titleFont: {
+            size: 13,
+            weight: 600
+          },
+          bodyFont: {
+            size: 12
+          },
+          displayColors: true,
+          callbacks: {
+            title: (items) => `Time: ${items[0].label}ms`,
+            label: (item) => {
+              if (item.parsed.y !== null) {
+                return `${item.dataset.label}: ${item.parsed.y.toFixed(4)}`;
+              }
+              return null;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Time (ms)',
+            color: '#71717a',
+            font: {
+              size: 12,
+              weight: 500
+            }
+          },
+          grid: {
+            display: false
+          },
+          ticks: {
+            maxTicksLimit: 10,
+            font: {
+              size: 11
+            }
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Y Position (normalized)',
+            color: '#71717a',
+            font: {
+              size: 12,
+              weight: 500
+            }
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.05)'
+          },
+          ticks: {
+            font: {
+              size: 11
+            }
+          }
+        }
+      }
     }
   });
 </script>
