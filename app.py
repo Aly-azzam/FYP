@@ -5,10 +5,16 @@ import json
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from ultralytics import YOLO
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
+
+
+yolo_model = YOLO("yolov8n.pt")  # lightweight & fast
+
 
 UPLOAD_FOLDER = "uploads"
 OUTPUT_FOLDER = "outputs"
@@ -212,11 +218,18 @@ def process_image(path):
 
 
 def process_video(path):
-    """Process video with face, hand, and pose detection."""
+    """
+    Process video with:
+    - MediaPipe: face, hands, pose
+    - YOLO: object detection
+    """
+
+    # ===== Initialize detectors =====
     hand_detector = create_hand_detector()
     face_detector = create_face_detector()
     pose_detector = create_pose_detector()
 
+    # ===== Video I/O =====
     cap = cv2.VideoCapture(path)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -228,98 +241,122 @@ def process_video(path):
 
     out = cv2.VideoWriter(
         out_path,
-        cv2.VideoWriter_fourcc(*"avc1"),  # H.264
+        cv2.VideoWriter_fourcc(*"avc1"),
         fps,
         (w, h)
     )
 
-    # Trajectory data
-    times = []
-    hand_y = []      # Index fingertip Y
-    pose_y = []      # Nose Y (for head tracking)
+    # ===== Data tracking =====
     frame_count = 0
+    yolo_objects_count = 0
 
-    print(f"[AugMentor 2.0] Processing video: {total_frames} frames at {fps:.1f} fps")
+    print(f"[INFO] Processing video: {total_frames} frames @ {fps:.1f} fps")
 
+    # ===== Main loop =====
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
         frame_count += 1
-        if frame_count % 30 == 0:
-            print(f"[AugMentor 2.0] Processing frame {frame_count}/{total_frames}")
-
         t = cap.get(cv2.CAP_PROP_POS_MSEC)
-        
-        # Convert to MediaPipe format
+
+        # Convert to MediaPipe image
         mp_img = mp.Image(
             image_format=mp.ImageFormat.SRGB,
             data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         )
 
-        # ===== Face Detection =====
+        # ================= FACE =================
         face_res = face_detector.detect(mp_img)
         if face_res.detections:
             for d in face_res.detections:
                 b = d.bounding_box
-                cv2.rectangle(frame,
-                              (b.origin_x, b.origin_y),
-                              (b.origin_x + b.width, b.origin_y + b.height),
-                              COLORS['face'], 2)
+                cv2.rectangle(
+                    frame,
+                    (b.origin_x, b.origin_y),
+                    (b.origin_x + b.width, b.origin_y + b.height),
+                    COLORS["face"],
+                    2
+                )
 
-        # ===== Hand Detection =====
-        hand_y_val = None
+        # ================= HANDS =================
         hand_res = hand_detector.detect(mp_img)
         if hand_res.hand_landmarks:
-            hand = hand_res.hand_landmarks[0]
-            for a, b in HAND_CONNECTIONS:
-                p1, p2 = hand[a], hand[b]
-                cv2.line(frame,
-                         (int(p1.x * w), int(p1.y * h)),
-                         (int(p2.x * w), int(p2.y * h)),
-                         COLORS['hand'], 2)
-            # Track index fingertip (landmark 8)
-            hand_y_val = hand[8].y
+            for hand in hand_res.hand_landmarks:
+                for a, b in HAND_CONNECTIONS:
+                    p1, p2 = hand[a], hand[b]
+                    cv2.line(
+                        frame,
+                        (int(p1.x * w), int(p1.y * h)),
+                        (int(p2.x * w), int(p2.y * h)),
+                        COLORS["hand"],
+                        2
+                    )
+                for lm in hand:
+                    cv2.circle(
+                        frame,
+                        (int(lm.x * w), int(lm.y * h)),
+                        4,
+                        COLORS["hand"],
+                        -1
+                    )
 
-        # ===== Pose Detection =====
-        pose_y_val = None
+        # ================= POSE =================
         pose_res = pose_detector.detect(mp_img)
         if pose_res.pose_landmarks:
             frame = draw_pose_landmarks(frame, pose_res.pose_landmarks, w, h)
-            # Track nose position (landmark 0) for trajectory
-            nose = pose_res.pose_landmarks[0][0]
-            if nose.visibility > 0.5:
-                pose_y_val = nose.y
 
-        times.append(t)
-        hand_y.append(hand_y_val)
-        pose_y.append(pose_y_val)
+        # ================= YOLO OBJECTS =================
+        yolo_results = yolo_model(frame, conf=0.4, verbose=False)
+
+        for r in yolo_results:
+            for box in r.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                cls_id = int(box.cls[0])
+                conf = float(box.conf[0])
+                label = yolo_model.names[cls_id]
+
+                yolo_objects_count += 1
+
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
+                cv2.putText(
+                    frame,
+                    f"{label} {conf:.2f}",
+                    (x1, y1 - 8),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 255, 255),
+                    2
+                )
+
         out.write(frame)
 
+    # ===== Cleanup =====
     cap.release()
     out.release()
 
-    print(f"[AugMentor 2.0] Video processing complete! {frame_count} frames processed.")
+    print("[INFO] Video processing complete")
 
-    # Graph data with both hand and pose trajectories
-    graph_data = json.dumps({
-        "t": times,
-        "hand_y": hand_y,
-        "pose_y": pose_y
-    })
+    # ===== JSON summary =====
+    summary = {
+        "frames_processed": frame_count,
+        "fps": round(fps, 1),
+        "resolution": f"{w}x{h}",
+        "duration_sec": round(frame_count / fps, 2),
+        "yolo_objects_detected": yolo_objects_count,
+        "models": {
+            "mediapipe": ["face", "hands", "pose"],
+            "yolo": "yolov8n"
+        }
+    }
 
     return render_template(
         "result.html",
         media_type="video",
         media_file=out_name,
-        graph_data=graph_data,
-        json_preview=json.dumps({
-            "frames_processed": frame_count,
-            "fps": round(fps, 1),
-            "resolution": f"{w}x{h}",
-            "duration_sec": round(frame_count / fps, 2)
-        }, indent=2)
+        graph_data=None,
+        json_preview=json.dumps(summary, indent=2)
     )
 
 

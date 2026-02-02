@@ -1,4 +1,5 @@
 flask
-mediapipe
 opencv-python
+mediapipe
+ultralytics
 numpy
