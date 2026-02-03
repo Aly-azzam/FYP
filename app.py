@@ -216,6 +216,61 @@ def process_image(path):
         json_preview=json.dumps(detection_results, indent=2)
     )
 
+def filter_outliers(values, max_jump=0.15):
+    """
+    Remove sudden unrealistic jumps in normalized positions.
+    """
+    if not values:
+        return values
+
+    filtered = [values[0]]
+
+    for v in values[1:]:
+        prev = filtered[-1]
+        if v is None or prev is None:
+            filtered.append(v)
+        elif abs(v - prev) > max_jump:
+            filtered.append(prev)  # keep previous value
+        else:
+            filtered.append(v)
+
+    return filtered
+
+def smooth_moving_average(values, window=5):
+    """
+    Smooth signal using moving average.
+    """
+    smoothed = []
+
+    for i in range(len(values)):
+        window_vals = [
+            v for v in values[max(0, i - window): i + 1]
+            if v is not None
+        ]
+
+        if window_vals:
+            smoothed.append(sum(window_vals) / len(window_vals))
+        else:
+            smoothed.append(None)
+
+    return smoothed
+
+
+def interpolate_missing(values):
+    """
+    Fill short gaps (None values) using linear interpolation.
+    """
+    interpolated = values[:]
+
+    for i in range(1, len(values) - 1):
+        if interpolated[i] is None:
+            prev_v = interpolated[i - 1]
+            next_v = interpolated[i + 1]
+            if prev_v is not None and next_v is not None:
+                interpolated[i] = (prev_v + next_v) / 2
+
+    return interpolated
+
 
 def process_video(path):
     """
@@ -250,6 +305,11 @@ def process_video(path):
     frame_count = 0
     yolo_objects_count = 0
 
+    # ===== Trajectory tracking (NEW) =====
+    time_axis = []
+    hand_y = []
+    pose_y = []
+
     print(f"[INFO] Processing video: {total_frames} frames @ {fps:.1f} fps")
 
     # ===== Main loop =====
@@ -260,6 +320,7 @@ def process_video(path):
 
         frame_count += 1
         t = cap.get(cv2.CAP_PROP_POS_MSEC)
+        time_axis.append(t)
 
         # Convert to MediaPipe image
         mp_img = mp.Image(
@@ -282,7 +343,11 @@ def process_video(path):
 
         # ================= HANDS =================
         hand_res = hand_detector.detect(mp_img)
+
+        h_y = None
         if hand_res.hand_landmarks:
+            h_y = hand_res.hand_landmarks[0][8].y  # index fingertip
+
             for hand in hand_res.hand_landmarks:
                 for a, b in HAND_CONNECTIONS:
                     p1, p2 = hand[a], hand[b]
@@ -302,13 +367,20 @@ def process_video(path):
                         -1
                     )
 
+        hand_y.append(h_y)
+
         # ================= POSE =================
         pose_res = pose_detector.detect(mp_img)
+
+        p_y = None
         if pose_res.pose_landmarks:
+            p_y = pose_res.pose_landmarks[0][0].y  # nose
             frame = draw_pose_landmarks(frame, pose_res.pose_landmarks, w, h)
 
+        pose_y.append(p_y)
+
         # ================= YOLO OBJECTS =================
-        yolo_results = yolo_model(frame, conf=0.4, verbose=False)
+        yolo_results = yolo_model(frame, conf=0.2, verbose=False)
 
         for r in yolo_results:
             for box in r.boxes:
@@ -338,6 +410,26 @@ def process_video(path):
 
     print("[INFO] Video processing complete")
 
+    # ===== JSON post-processing (NEW) =====
+    hand_y = filter_outliers(hand_y)
+    hand_y = smooth_moving_average(hand_y)
+    hand_y = interpolate_missing(hand_y)
+
+    pose_y = filter_outliers(pose_y)
+    pose_y = smooth_moving_average(pose_y)
+    pose_y = interpolate_missing(pose_y)
+
+    graph_data = {
+        "t": time_axis,
+        "hand_y": hand_y,
+        "pose_y": pose_y,
+        "post_processing": {
+            "filtering": "outlier removal",
+            "smoothing": "moving average",
+            "interpolation": "linear"
+        }
+    }
+
     # ===== JSON summary =====
     summary = {
         "frames_processed": frame_count,
@@ -355,7 +447,7 @@ def process_video(path):
         "result.html",
         media_type="video",
         media_file=out_name,
-        graph_data=None,
+        graph_data=json.dumps(graph_data),
         json_preview=json.dumps(summary, indent=2)
     )
 
