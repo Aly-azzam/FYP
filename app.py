@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request, send_from_directory
+from flask import Flask, render_template, request, send_from_directory, redirect, url_for
 import os
 import cv2
 import json
+import uuid
+from datetime import datetime
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
@@ -9,6 +11,7 @@ from ultralytics import YOLO
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
 
 app = Flask(__name__)
 
@@ -58,6 +61,50 @@ COLORS = {
     'pose': (255, 107, 107),   # Coral/salmon (matches UI accent)
     'pose_point': (255, 165, 0) # Orange
 }
+
+
+# ===== History Management =====
+
+def load_history():
+    """Load analysis history from JSON file."""
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
+
+def save_history(history):
+    """Save analysis history to JSON file."""
+    with open(HISTORY_FILE, 'w') as f:
+        json.dump(history, f, indent=2)
+
+
+def add_to_history(entry):
+    """Add a new entry to history."""
+    history = load_history()
+    history.insert(0, entry)  # Add to beginning (newest first)
+    save_history(history)
+    return entry
+
+
+def get_history_entry(entry_id):
+    """Get a specific history entry by ID."""
+    history = load_history()
+    for entry in history:
+        if entry.get('id') == entry_id:
+            return entry
+    return None
+
+
+def generate_unique_filename(original_name, media_type):
+    """Generate a unique filename for processed media."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = str(uuid.uuid4())[:8]
+    ext = ".mp4" if media_type == "video" else ".png"
+    return f"processed_{timestamp}_{unique_id}{ext}"
 
 
 # ===== Detector Factory Functions =====
@@ -205,15 +252,33 @@ def process_image(path):
         detection_results["pose_landmarks"] = visible_count
         img = draw_pose_landmarks(img, pose_res.pose_landmarks, w, h)
 
-    out_name = "processed_image.png"
+    # Generate unique filename
+    out_name = generate_unique_filename(os.path.basename(path), "image")
     cv2.imwrite(os.path.join(OUTPUT_FOLDER, out_name), img)
+
+    # Prepare data for history
+    json_preview = json.dumps(detection_results, indent=2)
+    
+    # Save to history
+    entry_id = str(uuid.uuid4())[:12]
+    history_entry = {
+        "id": entry_id,
+        "original_filename": os.path.basename(path),
+        "media_type": "image",
+        "media_file": out_name,
+        "graph_data": None,
+        "json_preview": json_preview,
+        "processed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    add_to_history(history_entry)
 
     return render_template(
         "result.html",
         media_type="image",
         media_file=out_name,
         graph_data=None,
-        json_preview=json.dumps(detection_results, indent=2)
+        json_preview=json_preview,
+        entry_id=entry_id
     )
 
 def filter_outliers(values, max_jump=0.15):
@@ -291,7 +356,8 @@ def process_video(path):
     fps = cap.get(cv2.CAP_PROP_FPS) or 25
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    out_name = "processed_video.mp4"
+    # Generate unique filename
+    out_name = generate_unique_filename(os.path.basename(path), "video")
     out_path = os.path.join(OUTPUT_FOLDER, out_name)
 
     out = cv2.VideoWriter(
@@ -443,13 +509,69 @@ def process_video(path):
         }
     }
 
+    # Prepare data for history
+    graph_data_json = json.dumps(graph_data)
+    json_preview = json.dumps(summary, indent=2)
+    
+    # Save to history
+    entry_id = str(uuid.uuid4())[:12]
+    history_entry = {
+        "id": entry_id,
+        "original_filename": os.path.basename(path),
+        "media_type": "video",
+        "media_file": out_name,
+        "graph_data": graph_data_json,
+        "json_preview": json_preview,
+        "processed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    add_to_history(history_entry)
+
     return render_template(
         "result.html",
         media_type="video",
         media_file=out_name,
-        graph_data=json.dumps(graph_data),
-        json_preview=json.dumps(summary, indent=2)
+        graph_data=graph_data_json,
+        json_preview=json_preview,
+        entry_id=entry_id
     )
+
+
+# ===== History Routes =====
+
+@app.route("/history")
+def history():
+    """Display all past analyses."""
+    entries = load_history()
+    return render_template("history.html", entries=entries)
+
+
+@app.route("/history/<entry_id>")
+def view_history(entry_id):
+    """View a specific saved analysis."""
+    entry = get_history_entry(entry_id)
+    if not entry:
+        return redirect(url_for('history'))
+    
+    return render_template(
+        "result.html",
+        media_type=entry.get('media_type'),
+        media_file=entry.get('media_file'),
+        graph_data=entry.get('graph_data'),
+        json_preview=entry.get('json_preview'),
+        from_history=True,
+        entry_id=entry_id,
+        original_filename=entry.get('original_filename'),
+        processed_at=entry.get('processed_at')
+    )
+
+
+@app.route("/history/<entry_id>/delete", methods=["POST"])
+def delete_history(entry_id):
+    """Delete a history entry."""
+    history = load_history()
+    history = [e for e in history if e.get('id') != entry_id]
+    save_history(history)
+    return redirect(url_for('history'))
 
 
 @app.route("/outputs/<filename>")
