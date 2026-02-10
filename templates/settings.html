@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — AugMentor 2.0</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <a href="/" class="sidebar-brand">
+      <div class="brand-icon">👁</div>
+      <span class="brand-name">AugMentor 2.0</span>
+    </a>
+    <nav class="sidebar-nav">
+      <a href="/" class="nav-item">
+        <span class="nav-item-icon">📤</span> <span>Upload</span>
+      </a>
+      <a href="/history" class="nav-item">
+        <span class="nav-item-icon">📂</span> <span>History</span>
+      </a>
+      <a href="/settings" class="nav-item active">
+        <span class="nav-item-icon">⚙️</span> <span>Settings</span>
+      </a>
+      <a href="#" class="nav-item">
+        <span class="nav-item-icon">❓</span> <span>Help & Support</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar">A</div>
+        <div class="user-info">
+          <div class="user-name">AugMentor</div>
+          <div class="user-role">AI Media Analyzer</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <div class="breadcrumb">
+      <a href="/">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Settings</span>
+    </div>
+
+    <div class="page-header">
+      <h1>Settings</h1>
+      <p>Customize your AugMentor experience.</p>
+    </div>
+
+    <!-- Appearance -->
+    <div class="card settings-card">
+      <div class="settings-section-header">
+        <span class="settings-section-icon">🎨</span>
+        <div>
+          <h3 class="settings-section-title">Appearance</h3>
+          <p class="settings-section-desc">Control how AugMentor looks.</p>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Dark Mode</span>
+          <span class="setting-desc">Switch between light and dark themes</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleDarkMode">
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Processing -->
+    <div class="card settings-card">
+      <div class="settings-section-header">
+        <span class="settings-section-icon">🧠</span>
+        <div>
+          <h3 class="settings-section-title">Processing</h3>
+          <p class="settings-section-desc">Detection and output preferences.</p>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Show Skeleton Overlay</span>
+          <span class="setting-desc">Draw pose skeleton on output</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleSkeleton" checked>
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Show Bounding Boxes</span>
+          <span class="setting-desc">Draw detection bounding boxes</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleBboxes" checked>
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Show Labels</span>
+          <span class="setting-desc">Display class labels on detections</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleLabels" checked>
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Show Confidence</span>
+          <span class="setting-desc">Display confidence scores on overlays</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleConfidence" checked>
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- History & Storage -->
+    <div class="card settings-card">
+      <div class="settings-section-header">
+        <span class="settings-section-icon">💾</span>
+        <div>
+          <h3 class="settings-section-title">History & Storage</h3>
+          <p class="settings-section-desc">Manage saved data and cache.</p>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Keep History</span>
+          <span class="setting-desc">Automatically save analyses to history</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleKeepHistory" checked>
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Auto-save Outputs</span>
+          <span class="setting-desc">Keep processed files on disk</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleAutoSave" checked>
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="settings-actions">
+        <form action="/clear-cache" method="POST" style="display:inline;"
+              onsubmit="return confirm('This will delete all uploaded and processed files. Continue?');">
+          <button type="submit" class="btn btn-outline btn-sm">
+            <span>🗑️</span> <span>Clear Cache</span>
+          </button>
+        </form>
+
+        <form action="/history/clear" method="POST" style="display:inline;"
+              onsubmit="return confirm('Delete all history entries?');">
+          <button type="submit" class="btn btn-outline btn-sm">
+            <span>📂</span> <span>Clear History</span>
+          </button>
+        </form>
+
+        <button type="button" class="btn btn-danger btn-sm" id="resetSettingsBtn">
+          <span>🔄</span> <span>Reset Settings</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div class="card settings-card">
+      <div class="settings-section-header">
+        <span class="settings-section-icon">ℹ️</span>
+        <div>
+          <h3 class="settings-section-title">About</h3>
+          <p class="settings-section-desc">AugMentor 2.0 — AI Media Analyzer</p>
+        </div>
+      </div>
+      <div class="about-grid">
+        <div class="about-item">
+          <span class="about-label">Version</span>
+          <span class="about-value">2.0.0</span>
+        </div>
+        <div class="about-item">
+          <span class="about-label">Models</span>
+          <span class="about-value">MediaPipe, YOLOv8, OpenCV</span>
+        </div>
+        <div class="about-item">
+          <span class="about-label">License</span>
+          <span class="about-value">MIT</span>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <p>Powered by MediaPipe, OpenCV & YOLOv8</p>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  // ===== Settings persistence via localStorage =====
+  const settingsMap = {
+    'toggleDarkMode': 'augmentor_dark_mode',
+    'toggleSkeleton': 'augmentor_skeleton',
+    'toggleBboxes': 'augmentor_bboxes',
+    'toggleLabels': 'augmentor_labels',
+    'toggleConfidence': 'augmentor_confidence',
+    'toggleKeepHistory': 'augmentor_keep_history',
+    'toggleAutoSave': 'augmentor_auto_save',
+  };
+
+  const defaults = {
+    'augmentor_dark_mode': false,
+    'augmentor_skeleton': true,
+    'augmentor_bboxes': true,
+    'augmentor_labels': true,
+    'augmentor_confidence': true,
+    'augmentor_keep_history': true,
+    'augmentor_auto_save': true,
+  };
+
+  // Load settings
+  Object.entries(settingsMap).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const stored = localStorage.getItem(key);
+    if (stored !== null) {
+      el.checked = stored === 'true';
+    } else {
+      el.checked = defaults[key];
+    }
+  });
+
+  // Apply dark mode on load
+  if (localStorage.getItem('augmentor_dark_mode') === 'true') {
+    document.body.classList.add('dark-mode');
+  }
+
+  // Save on change
+  Object.entries(settingsMap).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', () => {
+      localStorage.setItem(key, el.checked);
+
+      // Instant dark mode toggle
+      if (key === 'augmentor_dark_mode') {
+        document.body.classList.toggle('dark-mode', el.checked);
+      }
+    });
+  });
+
+  // Reset all settings
+  document.getElementById('resetSettingsBtn').addEventListener('click', () => {
+    if (!confirm('Reset all settings to defaults?')) return;
+    Object.entries(defaults).forEach(([key, val]) => {
+      localStorage.setItem(key, val);
+    });
+    location.reload();
+  });
+</script>
+
+</body>
+</html>

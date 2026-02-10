@@ -48,7 +48,14 @@ class Pipeline:
     # IMAGE PIPELINE
     # ==========================================================
 
-    def process_image(self, image_path, output_path):
+    def process_image(self, image_path, output_path, enabled=None):
+        """
+        Process a single image.
+        enabled: dict of booleans, e.g. {"face": True, "hands": True, "pose": True, "objects": True}
+        """
+        if enabled is None:
+            enabled = {"face": True, "hands": True, "pose": True, "objects": True}
+
         frame = cv2.imread(image_path)
         h, w = frame.shape[:2]
 
@@ -57,25 +64,31 @@ class Pipeline:
             data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         )
 
-        # ===== Detection =====
-        faces = self.face.detect(mp_image)
-        hands = self.hands.detect(mp_image)
-        poses = self.pose.detect(mp_image)
-        objects = self.yolo.detect(frame)
+        # ===== Detection (only enabled models) =====
+        faces = self.face.detect(mp_image) if enabled.get("face") else []
+        hands = self.hands.detect(mp_image) if enabled.get("hands") else []
+        poses = self.pose.detect(mp_image) if enabled.get("pose") else []
+        objects = self.yolo.detect(frame) if enabled.get("objects") else []
 
         # ===== Visualization =====
-        frame = draw_faces(frame, faces)
-        frame = draw_hands(frame, hands, w, h)
-        frame = draw_pose(frame, poses, w, h)
-        frame = draw_objects(frame, objects)
+        if enabled.get("face"):
+            frame = draw_faces(frame, faces)
+        if enabled.get("hands"):
+            frame = draw_hands(frame, hands, w, h)
+        if enabled.get("pose"):
+            frame = draw_pose(frame, poses, w, h)
+        if enabled.get("objects"):
+            frame = draw_objects(frame, objects)
 
         cv2.imwrite(output_path, frame)
 
+        models_used = [k for k, v in enabled.items() if v]
         summary = {
             "faces": len(faces),
             "hands": len(hands),
             "poses": len(poses),
-            "objects": len(objects)
+            "objects": len(objects),
+            "models_used": models_used
         }
 
         return output_path, summary
@@ -84,12 +97,20 @@ class Pipeline:
     # VIDEO PIPELINE
     # ==========================================================
 
-    def process_video(self, video_path, output_path):
+    def process_video(self, video_path, output_path, enabled=None):
+        """
+        Process a video file.
+        enabled: dict of booleans for each model type.
+        """
+        if enabled is None:
+            enabled = {"face": True, "hands": True, "pose": True, "objects": True}
+
         cap = cv2.VideoCapture(video_path)
 
         w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS) or 25
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         out = cv2.VideoWriter(
             output_path,
@@ -102,6 +123,7 @@ class Pipeline:
         time_axis = []
         hand_y = []
         pose_y = []
+        total_objects = 0
 
         while True:
             ret, frame = cap.read()
@@ -116,11 +138,13 @@ class Pipeline:
                 data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             )
 
-            # ===== Detection =====
-            faces = self.face.detect(mp_image)
-            hands = self.hands.detect(mp_image)
-            poses = self.pose.detect(mp_image)
-            objects = self.yolo.detect(frame)
+            # ===== Detection (only enabled) =====
+            faces = self.face.detect(mp_image) if enabled.get("face") else []
+            hands = self.hands.detect(mp_image) if enabled.get("hands") else []
+            poses = self.pose.detect(mp_image) if enabled.get("pose") else []
+            objects = self.yolo.detect(frame) if enabled.get("objects") else []
+
+            total_objects += len(objects)
 
             # ===== Extract trajectories (RAW) =====
             hy = None
@@ -135,10 +159,14 @@ class Pipeline:
             pose_y.append(py)
 
             # ===== Visualization =====
-            frame = draw_faces(frame, faces)
-            frame = draw_hands(frame, hands, w, h)
-            frame = draw_pose(frame, poses, w, h)
-            frame = draw_objects(frame, objects)
+            if enabled.get("face"):
+                frame = draw_faces(frame, faces)
+            if enabled.get("hands"):
+                frame = draw_hands(frame, hands, w, h)
+            if enabled.get("pose"):
+                frame = draw_pose(frame, poses, w, h)
+            if enabled.get("objects"):
+                frame = draw_objects(frame, objects)
 
             out.write(frame)
 
@@ -164,10 +192,14 @@ class Pipeline:
             "pose_y": pose_y
         }
 
+        models_used = [k for k, v in enabled.items() if v]
         summary = {
             "frames": len(time_axis),
             "fps": round(fps, 1),
-            "duration_sec": round(len(time_axis) / fps, 2)
+            "resolution": f"{w}x{h}",
+            "duration_sec": round(len(time_axis) / fps, 2),
+            "total_objects_detected": total_objects,
+            "models_used": models_used
         }
 
         return output_path, json.dumps(graph_data), summary

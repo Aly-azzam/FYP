@@ -3,67 +3,165 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AugMentor 2.0 — AI Media Analyzer</title>
-  
-  <!-- Fonts -->
+  <title>AugMentor 2.0 — Upload</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<div class="page-wrapper">
-  <div class="upload-card card">
-    
-    <!-- Brand Header -->
-    <div class="card-header">
-      <div class="brand">
-        <div class="brand-icon">👁</div>
-        <span class="brand-text">AugMentor 2.0</span>
-      </div>
-      <h1>Analyze Your Media</h1>
-      <p>Upload a video or image to detect faces and hand landmarks with AI-powered precision</p>
-    </div>
-    
-    <!-- Upload Form -->
-    <form action="/process" method="POST" enctype="multipart/form-data" id="uploadForm">
-      
-      <div class="upload-zone" id="uploadZone">
-        <input type="file" name="media" id="mediaInput" accept="video/*,image/*" required>
-        
-        <div class="upload-icon">
-          <span id="uploadIconEmoji">📁</span>
-        </div>
-        
-        <span class="upload-label" id="uploadLabel">Drop your file here or click to browse</span>
-        <span class="upload-hint">
-          Supports <span>MP4</span>, <span>MOV</span>, <span>AVI</span>, <span>JPG</span>, <span>PNG</span>
-        </span>
-        
-        <div class="file-name" id="fileName"></div>
-      </div>
-      
-      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
-        <span class="btn-icon">✨</span>
-        <span>Analyze Media</span>
-      </button>
-      
-    </form>
-    
-    <!-- History Link -->
-    <div style="text-align: center; margin-top: 20px;">
-      <a href="/history" class="history-link">
-        📂 View Analysis History
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <a href="/" class="sidebar-brand">
+      <div class="brand-icon">👁</div>
+      <span class="brand-name">AugMentor 2.0</span>
+    </a>
+    <nav class="sidebar-nav">
+      <a href="/" class="nav-item active">
+        <span class="nav-item-icon">📤</span> <span>Upload</span>
       </a>
+      <a href="/history" class="nav-item">
+        <span class="nav-item-icon">📂</span> <span>History</span>
+      </a>
+      <a href="/settings" class="nav-item">
+        <span class="nav-item-icon">⚙️</span> <span>Settings</span>
+      </a>
+      <a href="#" class="nav-item">
+        <span class="nav-item-icon">❓</span> <span>Help & Support</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar">A</div>
+        <div class="user-info">
+          <div class="user-name">AugMentor</div>
+          <div class="user-role">AI Media Analyzer</div>
+        </div>
+      </div>
     </div>
-    
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <div class="breadcrumb">
+      <a href="/">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Upload</span>
+    </div>
+
+    <div class="page-header">
+      <h1>Upload Your Media File</h1>
+      <p>Upload a video or image to analyze with AI-powered detection.</p>
+    </div>
+
+    <!-- Upload + Toggles side by side -->
+    <div class="upload-grid">
+
+      <!-- Upload Card -->
+      <div class="card">
+        <form action="/process" method="POST" enctype="multipart/form-data" id="uploadForm">
+
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" name="media" id="mediaInput" accept="video/*,image/*" required>
+            <div class="upload-icon">
+              <span id="uploadIconEmoji">⬆️</span>
+            </div>
+            <span class="upload-label" id="uploadLabel">Select Video to Upload</span>
+            <span class="upload-hint">
+              Supported: <span>MP4</span>, <span>MOV</span>, <span>AVI</span>, <span>JPG</span>, <span>PNG</span>
+            </span>
+            <div class="file-name" id="fileName"></div>
+          </div>
+
+          <!-- File Preview (shown after selection) -->
+          <div class="file-preview" id="filePreview">
+            <div class="file-preview-thumb" id="filePreviewThumb"></div>
+            <div class="file-preview-info">
+              <div class="file-preview-name" id="filePreviewName"></div>
+              <div class="file-preview-meta">
+                <span class="file-type-badge" id="fileTypeBadge"></span>
+                <span class="file-meta-item" id="fileSize"></span>
+                <span class="file-meta-item" id="fileDuration"></span>
+              </div>
+            </div>
+            <button type="button" class="file-preview-clear" id="clearFileBtn" title="Clear file">✕</button>
+          </div>
+
+          <!-- Overlay Toggles -->
+          <div class="toggles-section">
+            <h3 class="toggles-title">Detection Models</h3>
+            <p class="toggles-subtitle">Choose which overlays to apply</p>
+
+            <div class="toggles-grid">
+              <label class="toggle-card">
+                <input type="checkbox" name="toggle_face" checked>
+                <div class="toggle-body">
+                  <span class="toggle-emoji">😊</span>
+                  <span class="toggle-name">Face</span>
+                </div>
+              </label>
+
+              <label class="toggle-card">
+                <input type="checkbox" name="toggle_hands" checked>
+                <div class="toggle-body">
+                  <span class="toggle-emoji">🤚</span>
+                  <span class="toggle-name">Hands</span>
+                </div>
+              </label>
+
+              <label class="toggle-card">
+                <input type="checkbox" name="toggle_pose" checked>
+                <div class="toggle-body">
+                  <span class="toggle-emoji">🏃</span>
+                  <span class="toggle-name">Pose</span>
+                </div>
+              </label>
+
+              <label class="toggle-card">
+                <input type="checkbox" name="toggle_objects" checked>
+                <div class="toggle-body">
+                  <span class="toggle-emoji">📦</span>
+                  <span class="toggle-name">Objects</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="upload-actions">
+            <button type="submit" class="btn btn-primary btn-grow" id="submitBtn">
+              <span class="btn-icon">✨</span>
+              <span>Analyze</span>
+            </button>
+            <button type="button" class="btn btn-outline" id="clearAllBtn">
+              <span>✕</span>
+              <span>Clear</span>
+            </button>
+          </div>
+
+        </form>
+      </div>
+
+    </div>
+
+    <footer class="footer">
+      <p>Powered by MediaPipe, OpenCV & YOLOv8</p>
+    </footer>
+
+  </main>
+</div>
+
+<!-- Processing Overlay -->
+<div class="processing-overlay" id="processingOverlay">
+  <div class="processing-spinner"></div>
+  <div class="processing-text">Processing your media...</div>
+  <div class="processing-bar">
+    <div class="processing-bar-fill"></div>
   </div>
-  
-  <footer class="footer">
-    <p>Powered by MediaPipe & OpenCV</p>
-  </footer>
+  <div class="processing-subtext">Running face, hand, pose & object detection. This may take a moment.</div>
 </div>
 
 <script src="/static/app.js"></script>

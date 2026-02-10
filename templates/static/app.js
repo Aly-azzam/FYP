@@ -1,7 +1,16 @@
 /**
- * AugMentor 2.0 - Enhanced Upload Experience
+ * AugMentor 2.0 — App Logic
  */
 
+// ===== Dark Mode Persistence (all pages) =====
+document.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem('augmentor_dark_mode') === 'true') {
+    document.body.classList.add('dark-mode');
+  }
+});
+
+
+// ===== Upload Page =====
 document.addEventListener('DOMContentLoaded', () => {
   const uploadZone = document.getElementById('uploadZone');
   const mediaInput = document.getElementById('mediaInput');
@@ -13,57 +22,124 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (!uploadZone || !mediaInput) return;
 
-  // File type icons
-  const fileIcons = {
-    video: '🎬',
-    image: '🖼️',
-    default: '📁'
-  };
+  const fileIcons = { video: '🎬', image: '🖼️', default: '📁' };
 
-  // Handle file selection
+  // Preview elements
+  const filePreview = document.getElementById('filePreview');
+  const filePreviewThumb = document.getElementById('filePreviewThumb');
+  const filePreviewName = document.getElementById('filePreviewName');
+  const fileTypeBadge = document.getElementById('fileTypeBadge');
+  const fileSizeEl = document.getElementById('fileSize');
+  const fileDurationEl = document.getElementById('fileDuration');
+  const clearFileBtn = document.getElementById('clearFileBtn');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
   function handleFileSelect(file) {
     if (!file) return;
-
     const isVideo = file.type.startsWith('video/');
     const isImage = file.type.startsWith('image/');
 
     if (!isVideo && !isImage) {
-      showError('Please select a valid video or image file');
+      showToast('Please select a valid video or image file', 'error');
       return;
     }
 
-    // Update UI
+    // Upload zone state
     uploadZone.classList.add('has-file');
     uploadIconEmoji.textContent = isVideo ? fileIcons.video : fileIcons.image;
     uploadLabel.textContent = 'File selected';
     fileName.textContent = file.name;
     fileName.style.display = 'block';
 
-    // Add subtle animation
-    uploadZone.style.animation = 'none';
-    uploadZone.offsetHeight; // Trigger reflow
-    uploadZone.style.animation = 'pulse 0.3s ease';
+    // Show file preview card
+    if (filePreview) {
+      filePreview.classList.add('visible');
+      filePreviewName.textContent = file.name;
+      fileSizeEl.textContent = formatFileSize(file.size);
+
+      // Type badge
+      fileTypeBadge.textContent = isVideo ? 'VIDEO' : 'IMAGE';
+      fileTypeBadge.className = 'file-type-badge ' + (isVideo ? 'video' : 'image');
+
+      // Thumbnail
+      filePreviewThumb.innerHTML = '';
+      const url = URL.createObjectURL(file);
+
+      if (isImage) {
+        const img = document.createElement('img');
+        img.src = url;
+        filePreviewThumb.appendChild(img);
+        fileDurationEl.textContent = '';
+      } else {
+        const vid = document.createElement('video');
+        vid.src = url;
+        vid.muted = true;
+        vid.preload = 'metadata';
+        vid.addEventListener('loadedmetadata', () => {
+          const dur = vid.duration;
+          if (dur && isFinite(dur)) {
+            const mins = Math.floor(dur / 60);
+            const secs = Math.floor(dur % 60);
+            fileDurationEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+          }
+          // Seek a bit for thumbnail
+          vid.currentTime = Math.min(1, dur * 0.1);
+        });
+        vid.addEventListener('seeked', () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = 120;
+          canvas.height = 120;
+          canvas.getContext('2d').drawImage(vid, 0, 0, canvas.width, canvas.height);
+          const img = document.createElement('img');
+          img.src = canvas.toDataURL();
+          filePreviewThumb.innerHTML = '';
+          filePreviewThumb.appendChild(img);
+        });
+        filePreviewThumb.appendChild(vid);
+      }
+    }
   }
 
-  // File input change
-  mediaInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    handleFileSelect(file);
+  // Clear file
+  function clearFile() {
+    mediaInput.value = '';
+    uploadZone.classList.remove('has-file');
+    uploadIconEmoji.textContent = '⬆️';
+    uploadLabel.textContent = 'Select Video to Upload';
+    fileName.style.display = 'none';
+    fileName.textContent = '';
+    if (filePreview) filePreview.classList.remove('visible');
+    if (fileDurationEl) fileDurationEl.textContent = '';
+  }
+
+  if (clearFileBtn) clearFileBtn.addEventListener('click', clearFile);
+  if (clearAllBtn) clearAllBtn.addEventListener('click', () => {
+    clearFile();
+    // Reset toggles to checked
+    document.querySelectorAll('.toggle-card input[type="checkbox"]').forEach(cb => cb.checked = true);
   });
 
-  // Drag and drop handlers
-  ['dragenter', 'dragover'].forEach(eventName => {
-    uploadZone.addEventListener(eventName, (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+  mediaInput.addEventListener('change', (e) => {
+    handleFileSelect(e.target.files[0]);
+  });
+
+  // Drag and drop
+  ['dragenter', 'dragover'].forEach(ev => {
+    uploadZone.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation();
       uploadZone.classList.add('drag-over');
     });
   });
 
-  ['dragleave', 'drop'].forEach(eventName => {
-    uploadZone.addEventListener(eventName, (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+  ['dragleave', 'drop'].forEach(ev => {
+    uploadZone.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation();
       uploadZone.classList.remove('drag-over');
     });
   });
@@ -71,118 +147,91 @@ document.addEventListener('DOMContentLoaded', () => {
   uploadZone.addEventListener('drop', (e) => {
     const file = e.dataTransfer.files[0];
     if (file) {
-      // Create a new DataTransfer to set the file to the input
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
-      mediaInput.files = dataTransfer.files;
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      mediaInput.files = dt.files;
       handleFileSelect(file);
     }
   });
 
-  // Form submission with loading state
+  // Form submit → processing overlay
   if (uploadForm && submitBtn) {
     uploadForm.addEventListener('submit', (e) => {
       if (!mediaInput.files || mediaInput.files.length === 0) {
         e.preventDefault();
-        showError('Please select a file first');
+        showToast('Please select a file first', 'error');
         return;
       }
 
-      // Show loading state
+      // Show processing overlay
+      const overlay = document.getElementById('processingOverlay');
+      if (overlay) overlay.classList.add('active');
+
       submitBtn.disabled = true;
-      submitBtn.innerHTML = `
-        <span class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></span>
-        <span>Processing...</span>
-      `;
+      submitBtn.innerHTML = '<span class="spinner"></span> <span>Processing...</span>';
     });
   }
-
-  // Error display
-  function showError(message) {
-    // Create error toast
-    const toast = document.createElement('div');
-    toast.className = 'error-toast';
-    toast.textContent = message;
-    toast.style.cssText = `
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #ef4444;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-weight: 500;
-      z-index: 1000;
-      animation: slideUp 0.3s ease;
-    `;
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-      toast.style.animation = 'fadeOut 0.3s ease forwards';
-      setTimeout(() => toast.remove(), 300);
-    }, 3000);
-  }
-
-  // Add pulse animation keyframes
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.02); }
-      100% { transform: scale(1); }
-    }
-    @keyframes fadeOut {
-      to { opacity: 0; transform: translateX(-50%) translateY(20px); }
-    }
-  `;
-  document.head.appendChild(style);
 });
 
-/**
- * Results page enhancements
- */
+
+// ===== Results Page Enhancements =====
 document.addEventListener('DOMContentLoaded', () => {
-  // Add smooth reveal animations to result cards
   const resultCards = document.querySelectorAll('.result-card');
-  
+
   if (resultCards.length > 0) {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.style.opacity = '1';
-          entry.target.style.transform = 'translateY(0)';
-        }
-      });
-    }, { threshold: 0.1 });
-
-    resultCards.forEach(card => {
-      card.style.opacity = '0';
-      card.style.transform = 'translateY(20px)';
-      card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-      observer.observe(card);
-    });
-
-    // Trigger animation after a small delay
     setTimeout(() => {
       resultCards.forEach((card, index) => {
         setTimeout(() => {
           card.style.opacity = '1';
           card.style.transform = 'translateY(0)';
-        }, index * 100);
+        }, index * 80);
       });
     }, 100);
   }
-
-  // Enhanced video player
-  const video = document.querySelector('.media-container video');
-  if (video) {
-    // Add custom controls styling on play
-    video.addEventListener('play', () => {
-      video.parentElement.classList.add('playing');
-    });
-    video.addEventListener('pause', () => {
-      video.parentElement.classList.remove('playing');
-    });
-  }
 });
+
+
+// ===== Toast Notification =====
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.textContent = message;
+
+  const colors = {
+    error: '#ef4444',
+    success: '#10b981',
+    info: '#6366f1',
+  };
+
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: ${colors[type] || colors.info};
+    color: white;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    z-index: 10000;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    animation: toastIn 0.3s ease;
+  `;
+
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Inject toast animation
+const toastStyle = document.createElement('style');
+toastStyle.textContent = `
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+`;
+document.head.appendChild(toastStyle);

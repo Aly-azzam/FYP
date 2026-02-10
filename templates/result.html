@@ -4,231 +4,281 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Results — AugMentor 2.0</title>
-  
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
-<div class="container">
-  
-  <!-- Back Link -->
-  <a href="/" class="back-link">
-    <span>←</span>
-    <span>New Analysis</span>
-  </a>
-  
-  <!-- Results Header -->
-  <div class="results-header">
-    <div class="brand" style="justify-content: center;">
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <a href="/" class="sidebar-brand">
       <div class="brand-icon">👁</div>
-      <span class="brand-text">AugMentor 2.0</span>
+      <span class="brand-name">AugMentor 2.0</span>
+    </a>
+    <nav class="sidebar-nav">
+      <a href="/" class="nav-item">
+        <span class="nav-item-icon">📤</span> <span>Upload</span>
+      </a>
+      <a href="/history" class="nav-item">
+        <span class="nav-item-icon">📂</span> <span>History</span>
+      </a>
+      <a href="/settings" class="nav-item">
+        <span class="nav-item-icon">⚙️</span> <span>Settings</span>
+      </a>
+      <a href="#" class="nav-item">
+        <span class="nav-item-icon">❓</span> <span>Help & Support</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar">A</div>
+        <div class="user-info">
+          <div class="user-name">AugMentor</div>
+          <div class="user-role">AI Media Analyzer</div>
+        </div>
+      </div>
     </div>
-    <h1>Analysis Complete</h1>
-    <span class="badge badge-success">✓ Processed Successfully</span>
-  </div>
-  
-  <!-- Processed Media Card -->
-  <div class="card result-card">
-    <h2>Processed Media</h2>
-    <div class="media-container">
-      {% if media_type == "video" %}
-        <video controls preload="metadata" playsinline>
-          <source src="/outputs/{{ media_file }}" type="video/mp4">
-          Your browser does not support the video tag.
-        </video>
-      {% else %}
-        <img src="/outputs/{{ media_file }}" alt="Processed image with detected landmarks">
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <div class="breadcrumb">
+      <a href="/">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Results</span>
+    </div>
+
+    <div class="page-header" style="margin-bottom: 20px;">
+      <h1>Analysis Results</h1>
+    </div>
+
+    <!-- ===== Video + Overlay Tabs ===== -->
+    <div class="card result-video-card">
+
+      <!-- Overlay Tabs -->
+      <div class="overlay-tabs">
+        <label class="overlay-tab active">
+          <input type="checkbox" checked> <span>📦 Objects</span>
+        </label>
+        <label class="overlay-tab active">
+          <input type="checkbox" checked> <span>🤚 Hands</span>
+        </label>
+        <label class="overlay-tab active">
+          <input type="checkbox" checked> <span>🏃 Pose</span>
+        </label>
+        {% if graph_data %}
+        <label class="overlay-tab active">
+          <input type="checkbox" checked> <span>📈 Trajectories</span>
+        </label>
+        {% endif %}
+      </div>
+
+      <!-- Media -->
+      <div class="result-media-wrap">
+        {% if media_type == "video" %}
+          <video id="resultVideo" controls preload="metadata" playsinline>
+            <source src="/outputs/{{ media_file }}" type="video/mp4">
+          </video>
+        {% else %}
+          <img src="/outputs/{{ media_file }}" alt="Processed image">
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div class="dash-actions">
+        <a href="/" class="btn btn-outline btn-sm">← Go Back</a>
+        <a href="/" class="btn btn-primary btn-sm">⬆ Re-Analyze</a>
+        <a href="/download/{{ media_file }}" class="btn btn-primary btn-sm">⬇ Download</a>
+      </div>
+    </div>
+
+    <!-- ===== Bottom Grid: Chart + Raw Data ===== -->
+    <div class="result-bottom-grid">
+
+      {% if graph_data %}
+      <!-- Motion Analysis -->
+      <div class="card result-chart-card">
+        <h2 class="dash-section-title">Motion Analysis</h2>
+
+        <div class="chart-legend-toggles">
+          <label class="chart-toggle active">
+            <input type="checkbox" checked id="toggleHandChart"> <span class="chart-dot hand"></span> Hand Y-position
+          </label>
+          <label class="chart-toggle active">
+            <input type="checkbox" checked id="togglePoseChart"> <span class="chart-dot pose"></span> Pose Y-position
+          </label>
+        </div>
+
+        <div class="chart-container" style="height: 220px;">
+          <canvas id="chart"></canvas>
+        </div>
+
+        {% if media_type == "video" and total_frames %}
+        <div class="chart-scrubber">
+          <button class="btn btn-outline btn-xs" onclick="stepFrame(-10)">◀</button>
+          <span class="chart-scrubber-time" id="scrubberTime">0s</span>
+          <div class="chart-scrubber-bar">
+            <div class="chart-scrubber-fill" id="scrubberFill"></div>
+          </div>
+          <button class="btn btn-outline btn-xs" onclick="stepFrame(10)">▶</button>
+        </div>
+        {% endif %}
+      </div>
       {% endif %}
+
+      <!-- Raw Data -->
+      <div class="card result-raw-card">
+        <div class="dash-panel-header">
+          <h3 class="dash-panel-title">Raw Data</h3>
+          <div class="dash-panel-actions">
+            <button class="btn btn-outline btn-xs" onclick="exportJSON()">📋 Export JSON</button>
+          </div>
+        </div>
+        <pre class="raw-json">{{ json_preview }}</pre>
+      </div>
+
     </div>
-  </div>
-  
-  <!-- Trajectory Chart (Video Only) -->
-  {% if graph_data %}
-  <div class="card result-card">
-    <h2>Motion Trajectory</h2>
-    <div class="chart-container">
-      <canvas id="chart"></canvas>
-    </div>
-  </div>
-  {% endif %}
-  
-  <!-- JSON Data Preview -->
-  <div class="card result-card">
-    <h3>Detection Data</h3>
-    <pre>{{ json_preview }}</pre>
-  </div>
-  
-  <!-- Footer -->
-  <footer class="footer">
-    <p>Powered by MediaPipe & OpenCV</p>
-  </footer>
-  
+
+    <footer class="footer">
+      <p>Powered by MediaPipe, OpenCV & YOLOv8</p>
+    </footer>
+
+  </main>
 </div>
+
+<script src="/static/app.js"></script>
+
+<script>
+  const rawPreview = '{{ json_preview | safe }}';
+  let summary = {};
+  try { summary = JSON.parse(rawPreview); } catch(e) {}
+
+  function exportJSON() {
+    const blob = new Blob([JSON.stringify(summary, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'detections.json';
+    a.click();
+  }
+</script>
+
+{% if media_type == "video" %}
+<script>
+  const video = document.getElementById('resultVideo');
+  const fps = {{ fps or 25 }};
+  const totalFrames = {{ total_frames or 0 }};
+  const scrubberTime = document.getElementById('scrubberTime');
+  const scrubberFill = document.getElementById('scrubberFill');
+
+  if (video) {
+    video.addEventListener('timeupdate', () => {
+      const frame = Math.round(video.currentTime * fps);
+      if (scrubberTime) scrubberTime.textContent = video.currentTime.toFixed(1) + 's';
+      if (scrubberFill) scrubberFill.style.width = ((frame / totalFrames) * 100) + '%';
+    });
+  }
+
+  function stepFrame(delta) {
+    if (!video) return;
+    const f = Math.round(video.currentTime * fps);
+    video.currentTime = Math.max(0, Math.min(totalFrames - 1, f + delta)) / fps;
+  }
+</script>
+{% endif %}
 
 {% if graph_data %}
 <script>
-  // Parse graph data
   const graph = JSON.parse('{{ graph_data | safe }}');
-  
-  // Build labels (time in ms)
-  const labels = graph.t.map(t => Math.round(t));
-  
-  // Hand trajectory data (index fingertip)
+  const labels = graph.t.map(t => (t / 1000).toFixed(1) + 's');
   const handData = graph.hand_y || graph.y || [];
-  
-  // Pose trajectory data (nose/head position)
   const poseData = graph.pose_y || [];
-  
-  // Chart.js configuration with custom styling
-  Chart.defaults.color = '#a1a1aa';
-  Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.08)';
+
+  const isDark = document.body.classList.contains('dark-mode');
+  Chart.defaults.color = isDark ? '#a1a1b5' : '#64748b';
+  Chart.defaults.borderColor = isDark ? '#2a2a38' : '#e5e7eb';
   Chart.defaults.font.family = "'DM Sans', sans-serif";
-  
-  // Build datasets
+
   const datasets = [];
-  
-  // Hand trajectory (green)
+
   if (handData.some(v => v !== null)) {
     datasets.push({
-      label: "Hand (Index Fingertip)",
+      label: "Hand Y-position",
       data: handData,
-      borderColor: '#10b981',
-      backgroundColor: 'rgba(16, 185, 129, 0.1)',
-      borderWidth: 2,
-      tension: 0.4,
-      fill: false,
-      pointRadius: 0,
-      pointHoverRadius: 6,
-      pointHoverBackgroundColor: '#10b981',
-      pointHoverBorderColor: '#fff',
-      pointHoverBorderWidth: 2,
+      borderColor: '#a78bfa',
+      backgroundColor: 'rgba(167, 139, 250, 0.12)',
+      borderWidth: 2, tension: 0.4, fill: true,
+      pointRadius: 0, pointHoverRadius: 5,
+      pointHoverBackgroundColor: '#a78bfa',
       spanGaps: true
     });
   }
-  
-  // Pose trajectory (coral/orange)
+
   if (poseData.some(v => v !== null)) {
     datasets.push({
-      label: "Body (Head Position)",
+      label: "Pose Y-position",
       data: poseData,
-      borderColor: '#ff6b6b',
-      backgroundColor: 'rgba(255, 107, 107, 0.1)',
-      borderWidth: 2,
-      tension: 0.4,
-      fill: false,
-      pointRadius: 0,
-      pointHoverRadius: 6,
-      pointHoverBackgroundColor: '#ff6b6b',
-      pointHoverBorderColor: '#fff',
-      pointHoverBorderWidth: 2,
+      borderColor: '#818cf8',
+      backgroundColor: 'rgba(129, 140, 248, 0.06)',
+      borderWidth: 2, tension: 0.4, fill: true,
+      pointRadius: 0, pointHoverRadius: 5,
+      pointHoverBackgroundColor: '#818cf8',
       spanGaps: true
     });
   }
-  
-  new Chart(document.getElementById("chart"), {
+
+  const chartInstance = new Chart(document.getElementById("chart"), {
     type: "line",
-    data: {
-      labels: labels,
-      datasets: datasets
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      interaction: {
-        mode: 'index',
-        intersect: false
+      interaction: { mode: 'index', intersect: false },
+      onClick: (e, elements) => {
+        const v = document.getElementById('resultVideo');
+        if (!v || !elements.length) return;
+        v.currentTime = graph.t[elements[0].index] / 1000;
       },
       plugins: {
-        legend: {
-          display: true,
-          position: 'top',
-          labels: {
-            boxWidth: 12,
-            boxHeight: 12,
-            borderRadius: 3,
-            useBorderRadius: true,
-            padding: 20,
-            font: {
-              size: 13,
-              weight: 500
-            }
-          }
-        },
+        legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(10, 10, 15, 0.9)',
-          titleColor: '#f4f4f5',
-          bodyColor: '#a1a1aa',
-          borderColor: 'rgba(255, 107, 107, 0.3)',
-          borderWidth: 1,
-          padding: 12,
-          cornerRadius: 8,
-          titleFont: {
-            size: 13,
-            weight: 600
-          },
-          bodyFont: {
-            size: 12
-          },
-          displayColors: true,
+          backgroundColor: isDark ? '#1e1e2e' : '#1e293b',
+          titleColor: '#fff', bodyColor: '#cbd5e1',
+          padding: 10, cornerRadius: 8, displayColors: true,
           callbacks: {
-            title: (items) => `Time: ${items[0].label}ms`,
-            label: (item) => {
-              if (item.parsed.y !== null) {
-                return `${item.dataset.label}: ${item.parsed.y.toFixed(4)}`;
-              }
-              return null;
-            }
+            title: items => items[0].label,
+            label: item => item.parsed.y !== null ? item.dataset.label + ': ' + item.parsed.y.toFixed(4) : null
           }
         }
       },
       scales: {
         x: {
-          title: {
-            display: true,
-            text: 'Time (ms)',
-            color: '#71717a',
-            font: {
-              size: 12,
-              weight: 500
-            }
-          },
-          grid: {
-            display: false
-          },
-          ticks: {
-            maxTicksLimit: 10,
-            font: {
-              size: 11
-            }
-          }
+          grid: { display: false },
+          ticks: { maxTicksLimit: 8, font: { size: 10 }, color: isDark ? '#6b6b80' : '#94a3b8' }
         },
         y: {
-          title: {
-            display: true,
-            text: 'Y Position (normalized)',
-            color: '#71717a',
-            font: {
-              size: 12,
-              weight: 500
-            }
-          },
-          grid: {
-            color: 'rgba(255, 255, 255, 0.05)'
-          },
-          ticks: {
-            font: {
-              size: 11
-            }
-          }
+          grid: { color: isDark ? '#1e1e28' : '#f1f5f9' },
+          ticks: { display: false }
         }
       }
     }
+  });
+
+  // Chart legend toggles
+  const toggleHand = document.getElementById('toggleHandChart');
+  const togglePose = document.getElementById('togglePoseChart');
+  if (toggleHand) toggleHand.addEventListener('change', () => {
+    const i = chartInstance.data.datasets.findIndex(d => d.label === 'Hand Y-position');
+    if (i >= 0) { chartInstance.setDatasetVisibility(i, toggleHand.checked); chartInstance.update(); }
+  });
+  if (togglePose) togglePose.addEventListener('change', () => {
+    const i = chartInstance.data.datasets.findIndex(d => d.label === 'Pose Y-position');
+    if (i >= 0) { chartInstance.setDatasetVisibility(i, togglePose.checked); chartInstance.update(); }
   });
 </script>
 {% endif %}

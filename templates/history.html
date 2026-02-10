@@ -4,95 +4,160 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>History — AugMentor 2.0</title>
-  
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<div class="container">
-  
-  <!-- Back Link -->
-  <a href="/" class="back-link">
-    <span>←</span>
-    <span>New Analysis</span>
-  </a>
-  
-  <!-- History Header -->
-  <div class="results-header">
-    <div class="brand" style="justify-content: center;">
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <a href="/" class="sidebar-brand">
       <div class="brand-icon">👁</div>
-      <span class="brand-text">AugMentor 2.0</span>
-    </div>
-    <h1>Analysis History</h1>
-    <p style="color: var(--text-secondary); margin-top: 8px;">
-      {% if entries %}
-        {{ entries|length }} saved analysis{{ 'es' if entries|length != 1 else '' }}
-      {% else %}
-        No analyses yet
-      {% endif %}
-    </p>
-  </div>
-  
-  {% if entries %}
-  <!-- History Grid -->
-  <div class="history-grid">
-    {% for entry in entries %}
-    <div class="history-card card">
-      <div class="history-card-media">
-        {% if entry.media_type == "video" %}
-          <video preload="metadata" muted>
-            <source src="/outputs/{{ entry.media_file }}" type="video/mp4">
-          </video>
-          <div class="media-type-badge">🎬 Video</div>
-        {% else %}
-          <img src="/outputs/{{ entry.media_file }}" alt="Processed image">
-          <div class="media-type-badge">🖼️ Image</div>
-        {% endif %}
-      </div>
-      
-      <div class="history-card-content">
-        <h3 class="history-card-title">{{ entry.original_filename }}</h3>
-        <p class="history-card-date">{{ entry.processed_at }}</p>
-        
-        <div class="history-card-actions">
-          <a href="/history/{{ entry.id }}" class="btn btn-primary btn-sm">
-            <span>View</span>
-          </a>
-          <form action="/history/{{ entry.id }}/delete" method="POST" style="display: inline;" 
-                onsubmit="return confirm('Delete this analysis?');">
-            <button type="submit" class="btn btn-danger btn-sm">
-              <span>Delete</span>
-            </button>
-          </form>
+      <span class="brand-name">AugMentor 2.0</span>
+    </a>
+    <nav class="sidebar-nav">
+      <a href="/" class="nav-item">
+        <span class="nav-item-icon">📤</span> <span>Upload</span>
+      </a>
+      <a href="/history" class="nav-item active">
+        <span class="nav-item-icon">📂</span> <span>History</span>
+        {% if entries %}<span class="nav-item-badge">{{ entries|length }}</span>{% endif %}
+      </a>
+      <a href="/settings" class="nav-item">
+        <span class="nav-item-icon">⚙️</span> <span>Settings</span>
+      </a>
+      <a href="#" class="nav-item">
+        <span class="nav-item-icon">❓</span> <span>Help & Support</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar">A</div>
+        <div class="user-info">
+          <div class="user-name">AugMentor</div>
+          <div class="user-role">AI Media Analyzer</div>
         </div>
       </div>
     </div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <!-- Empty State -->
-  <div class="empty-state card">
-    <div class="empty-icon">📂</div>
-    <h3>No analyses yet</h3>
-    <p>Upload a video or image to get started</p>
-    <a href="/" class="btn btn-primary" style="margin-top: 20px;">
-      <span>✨</span>
-      <span>Start Analyzing</span>
-    </a>
-  </div>
-  {% endif %}
-  
-  <!-- Footer -->
-  <footer class="footer">
-    <p>Powered by MediaPipe & OpenCV</p>
-  </footer>
-  
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <div class="breadcrumb">
+      <a href="/">Home</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">History</span>
+    </div>
+
+    <div class="page-header">
+      <h1>Analysis History</h1>
+      <p>
+        {% if entries %}
+          {{ entries|length }} saved analysis{{ 'es' if entries|length != 1 else '' }}
+        {% else %}
+          No analyses yet
+        {% endif %}
+      </p>
+    </div>
+
+    {% if entries %}
+    <!-- Top Actions -->
+    <div class="history-toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="historySearch" placeholder="Search by filename..." class="search-input">
+      </div>
+      <div class="toolbar-actions">
+        <form action="/history/clear" method="POST" style="display:inline;"
+              onsubmit="return confirm('Delete ALL history entries? This cannot be undone.');">
+          <button type="submit" class="btn btn-outline btn-sm">
+            <span>🗑️</span> <span>Clear All</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- History Grid -->
+    <div class="history-grid" id="historyGrid">
+      {% for entry in entries %}
+      <div class="history-card card" data-filename="{{ entry.original_filename|lower }}">
+        <div class="history-card-media">
+          {% if entry.media_type == "video" %}
+            <video preload="metadata" muted>
+              <source src="/outputs/{{ entry.media_file }}" type="video/mp4">
+            </video>
+            <div class="media-type-badge">🎬 Video</div>
+          {% else %}
+            <img src="/outputs/{{ entry.media_file }}" alt="Processed">
+            <div class="media-type-badge">🖼️ Image</div>
+          {% endif %}
+        </div>
+        <div class="history-card-content">
+          <h3 class="history-card-title">{{ entry.original_filename }}</h3>
+          <p class="history-card-date">{{ entry.processed_at }}</p>
+
+          <!-- Meta chips -->
+          <div class="history-meta">
+            {% if entry.duration_sec %}
+              <span class="meta-chip">⏱ {{ entry.duration_sec }}s</span>
+            {% endif %}
+            {% if entry.total_objects %}
+              <span class="meta-chip">📦 {{ entry.total_objects }} objects</span>
+            {% endif %}
+            {% if entry.models_used %}
+              {% for m in entry.models_used %}
+                <span class="meta-chip meta-chip-model">{{ m }}</span>
+              {% endfor %}
+            {% endif %}
+          </div>
+
+          <div class="history-card-actions">
+            <a href="/history/{{ entry.id }}" class="btn btn-primary btn-sm">View</a>
+            <form action="/history/{{ entry.id }}/delete" method="POST" style="display:inline;"
+                  onsubmit="return confirm('Delete this analysis?');">
+              <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state card">
+      <div class="empty-icon">📂</div>
+      <h3>No analyses yet</h3>
+      <p>Upload a video or image to get started.</p>
+      <a href="/" class="btn btn-primary" style="margin-top: 16px;">
+        <span>✨</span> <span>Start Analyzing</span>
+      </a>
+    </div>
+    {% endif %}
+
+    <footer class="footer">
+      <p>Powered by MediaPipe, OpenCV & YOLOv8</p>
+    </footer>
+  </main>
 </div>
+
+<script src="/static/app.js"></script>
+<script>
+  // Search filter
+  const search = document.getElementById('historySearch');
+  if (search) {
+    search.addEventListener('input', () => {
+      const q = search.value.toLowerCase();
+      document.querySelectorAll('.history-card').forEach(card => {
+        const name = card.dataset.filename || '';
+        card.style.display = name.includes(q) ? '' : 'none';
+      });
+    });
+  }
+</script>
 
 </body>
 </html>
