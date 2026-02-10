@@ -88,10 +88,10 @@
 
         <div class="chart-legend-toggles">
           <label class="chart-toggle active">
-            <input type="checkbox" checked id="toggleHandChart"> <span class="chart-dot hand"></span> Hand Y-position
+            <input type="checkbox" checked id="toggleHandChart"> <span class="chart-dot hand"></span> Hand
           </label>
           <label class="chart-toggle active">
-            <input type="checkbox" checked id="togglePoseChart"> <span class="chart-dot pose"></span> Pose Y-position
+            <input type="checkbox" checked id="togglePoseChart"> <span class="chart-dot pose"></span> Body
           </label>
         </div>
 
@@ -188,7 +188,7 @@
 
   if (handData.some(v => v !== null)) {
     datasets.push({
-      label: "Hand Y-position",
+      label: "Hand",
       data: handData,
       borderColor: '#a78bfa',
       backgroundColor: 'rgba(167, 139, 250, 0.12)',
@@ -201,7 +201,7 @@
 
   if (poseData.some(v => v !== null)) {
     datasets.push({
-      label: "Pose Y-position",
+      label: "Body",
       data: poseData,
       borderColor: '#818cf8',
       backgroundColor: 'rgba(129, 140, 248, 0.06)',
@@ -243,7 +243,7 @@
         },
         y: {
           grid: { color: isDark ? '#1e1e28' : '#f1f5f9' },
-          ticks: { display: false }
+          ticks: { font: { size: 11 }, color: isDark ? '#6b6b80' : '#94a3b8' }
         }
       }
     }
@@ -253,11 +253,11 @@
   const toggleHand = document.getElementById('toggleHandChart');
   const togglePose = document.getElementById('togglePoseChart');
   if (toggleHand) toggleHand.addEventListener('change', () => {
-    const i = chartInstance.data.datasets.findIndex(d => d.label === 'Hand Y-position');
+    const i = chartInstance.data.datasets.findIndex(d => d.label === 'Hand');
     if (i >= 0) { chartInstance.setDatasetVisibility(i, toggleHand.checked); chartInstance.update(); }
   });
   if (togglePose) togglePose.addEventListener('change', () => {
-    const i = chartInstance.data.datasets.findIndex(d => d.label === 'Pose Y-position');
+    const i = chartInstance.data.datasets.findIndex(d => d.label === 'Body');
     if (i >= 0) { chartInstance.setDatasetVisibility(i, togglePose.checked); chartInstance.update(); }
   });
 </script>
